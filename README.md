@@ -1,77 +1,105 @@
-# Helm Chart Installation Troubleshooting Guide
+# ReactJS Project Setup Guide
 
-## Issue: Helm Namespace Error During Installation
+This README documents the process of setting up a ReactJS project on a Linux system, the issues encountered during the setup, and how they were resolved.
 
-When trying to install a Helm chart into an existing Kubernetes namespace, you might encounter an error like the following:
-```
-Error: INSTALLATION FAILED: Unable to continue with install: Namespace "helm-app" in namespace "" exists and cannot be imported into the current release: invalid ownership metadata; label validation error: missing key "app.kubernetes.io/managed-by": must be set to "Helm"; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "flask-env"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "helm-app"
-```
+## **1. Prerequisites**
 
+Ensure the following are installed on your system:
 
-This error typically occurs when the namespace exists but doesn't have the necessary **labels** and **annotations** required by Helm to properly manage the namespace. The namespace is missing key metadata indicating that it is managed by Helm and associated with the specific release.
+- **Node.js** (recommended version: 16.x or higher)
+- **npm** (comes with Node.js)
+- **npx** (bundled with npm)
 
-## Steps to Fix the Error
-
-If you encounter this error, follow these steps to resolve it:
-
-### Step 1: Update the Namespace with Helm Metadata
-
-To resolve the issue, you need to add Helm-specific labels and annotations to the namespace you're trying to install your chart into (in this case, `helm-app`).
-
-Run the following commands to add the necessary metadata:
+To verify installation, run the following commands in the terminal:
 
 ```bash
-kubectl label namespace helm-app app.kubernetes.io/managed-by=Helm
-kubectl annotate namespace helm-app meta.helm.sh/release-name=flask-env
-kubectl annotate namespace helm-app meta.helm.sh/release-namespace=helm-app
+node -v
+npm -v
 ```
-- Label: `app.kubernetes.io/managed-by=Helm` tells Helm that the namespace is managed by Helm.
-- Annotations:
-`meta.helm.sh/release-name=flask-env` associates the namespace with your Helm release.
-- `meta.helm.sh/release-namespace=helm-app` associates the namespace with the release's namespace.
+- If `node` or `npm` is not installed, please follow the `Node.js installation guide` [ search on google ] for your operating system.
 
-## Step 2: Install the Helm Chart
-After adding the required metadata to the namespace, you can install the Helm chart as follows:
+## **2. Project Setup**
+- Creating a React App Using `npx`
+
+We used npx to create a new React app. This command uses the latest version of create-react-app without needing a global installation of the package.
+
+Run the following command to create the app:
 
 ```bash
-helm install flask-env ./flask-env-var-chart --namespace helm-app
+npx create-react-app my-app --legacy-peer-deps
 ```
-- Since the helm-app namespace is now properly labeled and annotated, Helm will be able to manage it and deploy the chart into it.
+- The `--legacy-peer-deps` flag is used to bypass peer dependency conflicts and ensures that the app installs successfully even if some dependencies do not align perfectly.
 
-## Step 3: Verify the Installation
-- Once the chart is installed, verify the deployment:
+## **3. Dependency Conflicts and Resolution**
+#### Conflict 1: React Version Mismatch
+During the setup, we encountered a dependency conflict between the React version and some other packages, notably @testing-library/react, which required a lower version of React.
+
+Error Message:
+
+```text
+npm error Found: react@19.0.0
+npm error Could not resolve dependency: peer react@"^18.0.0" from @testing-library/react@13.4.0
+```
+#### Solution:
+- We resolved this issue by using the --legacy-peer-deps flag during the create-react-app setup. This flag tells npm to bypass the strict peer dependency checks and proceed with the installation, even if some versions don't match perfectly.
 
 ```bash
-kubectl get all --namespace helm-app
+npx create-react-app my-app --legacy-peer-deps
 ```
-- This will show all resources (pods, services, deployments, etc.) created by the Helm chart within the helm-app namespace.
+- This allows React 19.x to be installed while still satisfying the requirements of other packages, although it might not be the ideal long-term solution.
 
-#### Alternative: Use a New Namespace
-- If you don't want to modify the existing helm-app namespace, another option is to create a new namespace and install the chart there. To do this:
+#### Conflict 2: Missing web-vitals Package
+- After starting the app, we encountered another error related to the missing web-vitals package. This is because create-react-app attempts to import the web-vitals library for performance tracking by default.
 
-## Create a new namespace (if it doesn’t already exist):
+Error Message:
+
+```text
+ERROR in ./src/reportWebVitals.js 5:4-24
+Module not found: Error: Can't resolve 'web-vitals'
+```
+#### Solution:
+To fix this error, we manually installed the web-vitals package:
 
 ```bash
-kubectl create namespace new-namespace
+npm install web-vitals
 ```
-- Install the Helm chart into the new namespace:
+Once the package was installed, we were able to run the app without encountering any errors:
 
 ```bash
-helm install flask-env ./flask-env-var-chart --namespace new-namespace
+npm start
 ```
-- This avoids modifying the existing namespace and works around the metadata issue.
+#### Optional: Remove web-vitals (If Not Needed)
+- If you don't need to track performance metrics, you can safely remove the web-vitals package and its associated code. Here's how:
 
-## Conclusion
-- When you face errors like the "invalid ownership metadata" during Helm chart installation, it's often due to missing labels and annotations on the namespace. Follow the steps above to resolve this and get your application successfully deployed using Helm. If you prefer not to modify the existing namespace, simply create a new namespace and install the chart there.
+- Delete the `src/reportWebVitals.js` file.
 
-By adding the required metadata to your namespace or using a new one, you can ensure smooth Helm installations going forward.
+- Remove the import statement from src/index.js:
 
-## Notes
-Helm Chart Installation Error: The error you saw earlier indicates missing Helm-specific metadata in the namespace you’re trying to install the chart into. Adding the correct metadata or choosing a different namespace will resolve this issue.
+```javascript
+// Remove or comment out this line
+import reportWebVitals from './reportWebVitals';
+Remove the call to reportWebVitals() in src/index.js:
+```
+```javascript
+// Remove or comment out this line
+reportWebVitals();
+```
+- Restart the App to ensure everything works without web-vitals:
 
-- Additional Resources:
+```bash
+npm start
+```
+## **4. Final Working Setup**
+- After performing the above steps, the following setup worked correctly:
 
-`Helm Official Documentation`
+- React 19.x was installed despite dependency conflicts.
+- All dependencies were installed successfully with the --legacy-peer-deps flag.
+- The app compiled successfully without errors.
+- The development server started and displayed the default React page in the browser.
+## 5. Conclusion
+- This README documents the complete process of setting up a React app, handling dependency conflicts, and resolving common setup issues. By using the `--legacy-peer-deps` flag, we were able to bypass dependency conflicts and successfully install the app. We also resolved the missing web-vitals package issue.
 
-`Kubernetes Namespace Documentation`
-
+## 6. References
+- React Documentation [ search this on google ]
+- Create React App GitHub [ search this on google ]
+- Node.js Installation Guide [ search this on google ]
